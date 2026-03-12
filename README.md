@@ -1,36 +1,68 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Phở Hội – Restaurant Management System
+
+QR-based dine-in ordering for Phở Hội, Vinhomes Central Park, HCMC.
+
+## Routes
+
+| URL | Who | Description |
+|-----|-----|-------------|
+| `/` | Anyone | Landing page |
+| `/menu` | Customer | Browse-only menu (no cart) |
+| `/table/[number]` | Customer | QR ordering — scan QR at table |
+| `/login` | Staff | Staff login |
+| `/dashboard/orders` | Staff | Live order management |
+| `/dashboard/tables` | Staff | Table status & sessions |
+| `/dashboard/billing` | Staff | Bill generation & payment |
+| `/settings` | Owner | App config & feature toggles |
+| `/settings/menu` | Owner | Toggle item availability |
+| `/settings/staff` | Owner | Manage staff accounts |
+| `/settings/tables` | Owner | Tables & QR code printing |
+
+## Test Accounts
+
+> Login at `/login`. Auth is currently a dev stub — any non-empty email + password works.
+> Replace with Supabase Auth once credentials are configured.
+
+| Name | Email | Role | Notes |
+|------|-------|------|-------|
+| Ann | ngoan.n.tr@gmail.com | Owner | Full access |
+| Minh | minh@phohoi.vn | Waiter | Floor staff |
+| Tuấn | tuan@phohoi.vn | Kitchen | Kitchen display |
+
+**Password (dev only):** any non-empty string, e.g. `test1234`
+
+## Customer QR Testing
+
+Visit `/table/1` through `/table/10` directly in the browser to simulate a customer scanning a QR code at the table.
 
 ## Getting Started
 
-First, run the development server:
-
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+App runs on [http://localhost:3000](http://localhost:3000) (or 3001 if 3000 is in use).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Environment Variables
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Copy `.env.local` and fill in Supabase credentials:
 
-## Learn More
+```
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+```
 
-To learn more about Next.js, take a look at the following resources:
+Until Supabase is connected, the app uses an in-memory store — data resets on server restart.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Database Setup
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Run the migration after connecting Supabase:
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```bash
+# From the phohoi-menu directory
+supabase db push
+# or apply manually:
+# supabase/migrations/001_initial_schema.sql
+```
