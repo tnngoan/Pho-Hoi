@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { Order } from "@/lib/types";
+import { printBillReceipt } from "@/lib/print";
 
 interface BillItem {
   name: string;
@@ -32,6 +33,7 @@ function BillingContent() {
   const [paymentMethod, setPaymentMethod] = useState<"cash" | "bank_transfer">("cash");
   const [loading, setLoading] = useState(false);
   const [paid, setPaid] = useState(false);
+  const [lastBill, setLastBill] = useState<{ bill: typeof bill; paymentMethod: "cash" | "bank_transfer" } | null>(null);
 
   const fetchTables = useCallback(() => {
     fetch("/api/tables")
@@ -98,6 +100,7 @@ function BillingContent() {
 
   const handlePay = async () => {
     if (!bill) return;
+    setLastBill({ bill, paymentMethod });
     setPaid(true);
     if (bill.table_number) {
       await fetch(`/api/table/${bill.table_number}`, {
@@ -118,12 +121,30 @@ function BillingContent() {
           <div className="text-5xl mb-4">✅</div>
           <h2 className="text-xl font-bold text-gray-900">Thanh toán thành công!</h2>
           <p className="text-gray-500 mt-2">Bàn đã được giải phóng.</p>
-          <button
-            onClick={() => setPaid(false)}
-            className="mt-6 px-6 py-3 bg-orange-500 text-white rounded-xl font-medium active:bg-orange-600"
-          >
-            Hóa đơn mới
-          </button>
+          <div className="flex flex-col gap-2 mt-6">
+            {lastBill?.bill && (
+              <button
+                onClick={() => printBillReceipt({
+                  tableNumber: lastBill.bill!.table_number,
+                  items: lastBill.bill!.items,
+                  subtotal: lastBill.bill!.subtotal,
+                  discount: lastBill.bill!.discount,
+                  total: lastBill.bill!.total,
+                  paymentMethod: lastBill.paymentMethod,
+                  orderCount: lastBill.bill!.orders.length,
+                })}
+                className="w-full px-6 py-3 bg-gray-900 text-white rounded-xl font-medium active:bg-gray-700"
+              >
+                🖨 In hóa đơn
+              </button>
+            )}
+            <button
+              onClick={() => { setPaid(false); setLastBill(null); }}
+              className="w-full px-6 py-3 bg-orange-500 text-white rounded-xl font-medium active:bg-orange-600"
+            >
+              Hóa đơn mới
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -230,12 +251,29 @@ function BillingContent() {
               </div>
             </div>
 
-            <button
-              onClick={handlePay}
-              className="w-full py-4 rounded-xl bg-green-500 text-white font-bold text-base active:bg-green-600 transition-colors shadow-sm"
-            >
-              ✓ Xác nhận thanh toán · {bill.total.toLocaleString("vi-VN")}đ
-            </button>
+            <div className="flex gap-2">
+              <button
+                onClick={() => printBillReceipt({
+                  tableNumber: bill.table_number,
+                  items: bill.items,
+                  subtotal: bill.subtotal,
+                  discount: bill.discount,
+                  total: bill.total,
+                  paymentMethod,
+                  orderCount: bill.orders.length,
+                })}
+                className="w-12 h-14 rounded-xl border border-gray-200 flex items-center justify-center text-xl active:bg-gray-100 flex-shrink-0"
+                title="In hóa đơn trước khi thanh toán"
+              >
+                🖨
+              </button>
+              <button
+                onClick={handlePay}
+                className="flex-1 py-4 rounded-xl bg-green-500 text-white font-bold text-base active:bg-green-600 transition-colors shadow-sm"
+              >
+                ✓ Xác nhận · {bill.total.toLocaleString("vi-VN")}đ
+              </button>
+            </div>
           </>
         )}
 

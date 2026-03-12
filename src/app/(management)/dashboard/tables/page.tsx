@@ -31,6 +31,16 @@ export default function TablesPage() {
   const [tables, setTables] = useState<TableInfo[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedTable, setSelectedTable] = useState<TableInfo | null>(null);
+  const [baseUrl, setBaseUrl] = useState("");
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => { setBaseUrl(window.location.origin); }, []);
+
+  const copyTableUrl = (tableNumber: number) => {
+    navigator.clipboard.writeText(`${baseUrl}/table/${tableNumber}`);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  };
 
   const fetchTables = useCallback(() => {
     fetch("/api/tables")
@@ -73,6 +83,14 @@ export default function TablesPage() {
           </button>
         </div>
       </header>
+
+      {/* URL info banner */}
+      <div className="px-4 pt-3 pb-0">
+        <div className="bg-blue-50 border border-blue-100 rounded-xl px-3 py-2 text-xs text-blue-600 flex items-center gap-2">
+          <span className="flex-1 truncate font-mono">{baseUrl}/table/<em>số_bàn</em></span>
+          <a href="/settings/tables" className="text-blue-500 font-medium whitespace-nowrap">In QR →</a>
+        </div>
+      </div>
 
       <div className="px-4 py-4">
         {/* Summary */}
@@ -145,12 +163,25 @@ export default function TablesPage() {
             {/* Handle */}
             <div className="absolute top-3 left-1/2 -translate-x-1/2 w-10 h-1 bg-gray-200 rounded-full" />
 
-            <div className="flex items-center justify-between mb-4 mt-2">
+            <div className="flex items-center justify-between mb-3 mt-2">
               <h2 className="font-bold text-gray-900 text-lg">
                 {selectedTable.label ?? `Bàn ${selectedTable.table_number}`}
               </h2>
               <button onClick={() => setSelectedTable(null)} className="text-gray-400 text-xl leading-none">✕</button>
             </div>
+
+            {/* QR URL row */}
+            <button
+              onClick={() => copyTableUrl(selectedTable.table_number)}
+              className="w-full flex items-center gap-2 bg-gray-50 rounded-xl px-3 py-2 mb-3 active:bg-gray-100 text-left"
+            >
+              <span className="text-xs font-mono text-gray-500 flex-1 truncate">
+                {baseUrl}/table/{selectedTable.table_number}
+              </span>
+              <span className="text-xs font-medium text-blue-600 whitespace-nowrap">
+                {copied ? "✓ Copied" : "Copy"}
+              </span>
+            </button>
 
             {selectedTable.active_session ? (
               <div className="mb-4 bg-blue-50 rounded-xl p-3 text-sm">

@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef } from "react";
 import { Order } from "@/lib/types";
+import { printOrderReceipt } from "@/lib/print";
 
 const STATUS_CONFIG = {
   pending:   { label: "Chờ xử lý",   color: "bg-yellow-100 text-yellow-800", next: "confirmed" as const },
@@ -173,14 +174,29 @@ export default function OrdersPage() {
                       {order.notes && <p className="text-xs text-gray-400 italic mt-1">{order.notes}</p>}
                     </div>
 
-                    {cfg.next && (
+                    <div className="flex gap-2 mt-3">
                       <button
-                        onClick={() => updateStatus(order.id, cfg.next!)}
-                        className="w-full mt-3 py-3 rounded-xl bg-orange-500 text-white font-semibold text-sm active:bg-orange-600"
+                        onClick={() => printOrderReceipt({
+                          id: order.id,
+                          tableNumber: order.table_number ?? "—",
+                          items: order.items,
+                          notes: order.notes,
+                          customerName: order.customer_name,
+                        })}
+                        className="w-10 h-10 flex-shrink-0 rounded-xl border border-gray-200 flex items-center justify-center text-gray-500 active:bg-gray-100"
+                        title="In phiếu bếp"
                       >
-                        {NEXT_LABEL[order.status]}
+                        🖨
                       </button>
-                    )}
+                      {cfg.next && (
+                        <button
+                          onClick={() => updateStatus(order.id, cfg.next!)}
+                          className="flex-1 py-3 rounded-xl bg-orange-500 text-white font-semibold text-sm active:bg-orange-600"
+                        >
+                          {NEXT_LABEL[order.status]}
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
               );

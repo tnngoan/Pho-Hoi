@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import { useParams } from "next/navigation";
 import Image from "next/image";
 import { MenuItem, CartItem, Order } from "@/lib/types";
+import { printOrderReceipt, PrintItem } from "@/lib/print";
 
 const CATEGORIES = [
   { key: "all",       label: "Tất cả" },
@@ -29,6 +30,7 @@ export default function TableOrderPage() {
   const [sessionOrders, setSessionOrders] = useState<Order[]>([]);
   const [customerName, setCustomerName] = useState("");
   const [orderNotes, setOrderNotes]   = useState("");
+  const [lastOrder, setLastOrder]     = useState<{ id: string; items: PrintItem[]; notes?: string; name: string } | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -77,17 +79,19 @@ export default function TableOrderPage() {
   const submitOrder = async () => {
     if (!cart.length) return;
     setSubmitting(true);
+    // Snapshot before clearing
+    const snapshot = cart.map((c) => ({ name: c.name, quantity: c.quantity, price: c.price }));
+    const name = customerName.trim() || "Khách";
+    const notes = orderNotes.trim() || undefined;
     try {
       const res = await fetch(`/api/table/${tableNumber}/order`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          customer_name: customerName.trim() || "Khách",
-          items: cart,
-          notes: orderNotes.trim() || undefined,
-        }),
+        body: JSON.stringify({ customer_name: name, items: cart, notes }),
       });
       if (!res.ok) throw new Error();
+      const order = await res.json();
+      setLastOrder({ id: order.id ?? "new", items: snapshot, notes, name });
       setCart([]);
       setCustomerName("");
       setOrderNotes("");
@@ -126,6 +130,29 @@ export default function TableOrderPage() {
       {toast && (
         <div className="fixed top-14 left-4 right-4 z-50 bg-gray-900 text-white text-sm px-4 py-3 rounded-xl shadow-lg text-center animate-in fade-in slide-in-from-top-2">
           {toast}
+        </div>
+      )}
+
+      {/* ── Print receipt prompt (shown after order, dismissed on tap) ── */}
+      {lastOrder && !toast && (
+        <div className="fixed top-14 left-4 right-4 z-50 flex items-center gap-3 bg-white border border-gray-200 px-4 py-3 rounded-xl shadow-lg animate-in fade-in slide-in-from-top-2">
+          <span className="text-green-600 text-lg">✓</span>
+          <span className="flex-1 text-sm text-gray-700">Đơn đã gửi</span>
+          <button
+            onClick={() => {
+              printOrderReceipt({
+                id: lastOrder.id,
+                tableNumber,
+                items: lastOrder.items,
+                notes: lastOrder.notes,
+                customerName: lastOrder.name,
+              });
+            }}
+            className="text-xs bg-gray-900 text-white px-3 py-1.5 rounded-lg active:bg-gray-700 whitespace-nowrap"
+          >
+            🖨 In biên lai
+          </button>
+          <button onClick={() => setLastOrder(null)} className="text-gray-400 text-lg leading-none">✕</button>
         </div>
       )}
 
