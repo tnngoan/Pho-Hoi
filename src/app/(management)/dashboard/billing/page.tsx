@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { Order } from "@/lib/types";
-import { printBillReceipt } from "@/lib/print";
+import { printBillReceipt, PaperSize } from "@/lib/print";
 
 interface BillItem {
   name: string;
@@ -34,6 +34,17 @@ function BillingContent() {
   const [loading, setLoading] = useState(false);
   const [paid, setPaid] = useState(false);
   const [lastBill, setLastBill] = useState<{ bill: typeof bill; paymentMethod: "cash" | "bank_transfer" } | null>(null);
+  const [paperSize, setPaperSize] = useState<PaperSize>(() => {
+    if (typeof window !== "undefined") {
+      return (localStorage.getItem("bill_paper_size") as PaperSize) ?? "thermal";
+    }
+    return "thermal";
+  });
+
+  const savePaperSize = (s: PaperSize) => {
+    setPaperSize(s);
+    localStorage.setItem("bill_paper_size", s);
+  };
 
   const fetchTables = useCallback(() => {
     fetch("/api/tables")
@@ -132,10 +143,10 @@ function BillingContent() {
                   total: lastBill.bill!.total,
                   paymentMethod: lastBill.paymentMethod,
                   orderCount: lastBill.bill!.orders.length,
-                })}
+                }, paperSize)}
                 className="w-full px-6 py-3 bg-gray-900 text-white rounded-xl font-medium active:bg-gray-700"
               >
-                🖨 In hóa đơn
+                🖨 In hóa đơn ({paperSize === "thermal" ? "80mm" : paperSize})
               </button>
             )}
             <button
@@ -251,6 +262,31 @@ function BillingContent() {
               </div>
             </div>
 
+            {/* Paper size picker */}
+            <div className="bg-white rounded-xl border border-gray-100 p-4">
+              <h2 className="font-semibold text-gray-900 mb-3">Khổ giấy in</h2>
+              <div className="grid grid-cols-3 gap-2">
+                {([
+                  { key: "thermal", label: "🧾 Nhiệt", sub: "80 mm" },
+                  { key: "A6",      label: "📄 A6",    sub: "105×148 mm" },
+                  { key: "A7",      label: "📄 A7",    sub: "74×105 mm" },
+                ] as { key: PaperSize; label: string; sub: string }[]).map((s) => (
+                  <button
+                    key={s.key}
+                    onClick={() => savePaperSize(s.key)}
+                    className={`py-2.5 rounded-xl text-xs font-medium border-2 transition-colors flex flex-col items-center gap-0.5 ${
+                      paperSize === s.key
+                        ? "border-orange-500 bg-orange-50 text-orange-700"
+                        : "border-gray-100 bg-gray-50 text-gray-600 active:bg-gray-100"
+                    }`}
+                  >
+                    <span>{s.label}</span>
+                    <span className="text-gray-400 font-normal">{s.sub}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
             <div className="flex gap-2">
               <button
                 onClick={() => printBillReceipt({
@@ -261,7 +297,7 @@ function BillingContent() {
                   total: bill.total,
                   paymentMethod,
                   orderCount: bill.orders.length,
-                })}
+                }, paperSize)}
                 className="w-12 h-14 rounded-xl border border-gray-200 flex items-center justify-center text-xl active:bg-gray-100 flex-shrink-0"
                 title="In hóa đơn trước khi thanh toán"
               >
