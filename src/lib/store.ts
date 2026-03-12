@@ -342,7 +342,7 @@ export const store = {
       total_orders: todayOrders.length,
       completed_orders: todayOrders.filter((o) => o.status === "served").length,
       pending_orders: todayOrders.filter((o) => o.status === "pending").length,
-      total_revenue: todayOrders.reduce((sum, o) => sum + o.total_price, 0),
+      total_revenue: todayOrders.filter((o) => o.status === "served").reduce((sum, o) => sum + o.total_price, 0),
       top_items: Object.values(itemCounts)
         .sort((a, b) => b.count - a.count)
         .slice(0, 5),

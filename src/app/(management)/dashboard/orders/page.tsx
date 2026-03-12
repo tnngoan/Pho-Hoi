@@ -65,10 +65,12 @@ export default function OrdersPage() {
     fetchOrders(); fetchStats();
   };
 
-  const filtered = filter === "active"
-    ? orders.filter((o) => !["served", "cancelled"].includes(o.status))
-    : filter === "served" ? orders.filter((o) => o.status === "served")
-    : orders;
+  const activeOrders = orders.filter((o) => !["served", "cancelled"].includes(o.status));
+  const servedOrders = orders.filter((o) => o.status === "served")
+    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+  const filtered = filter === "active" ? activeOrders : filter === "served" ? servedOrders : orders;
+
+  const servedTotal = servedOrders.reduce((s, o) => s + o.total_price, 0);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -92,7 +94,7 @@ export default function OrdersPage() {
       </header>
 
       <div className="px-3 py-4 space-y-4">
-        {/* Stats */}
+        {/* Stats — only revenue from served orders */}
         {stats && (
           <div className="grid grid-cols-2 gap-3">
             <div className="bg-white rounded-2xl p-4 border border-gray-100">
@@ -100,7 +102,7 @@ export default function OrdersPage() {
               <p className="text-2xl font-bold text-gray-900 mt-1">{stats.total_orders}</p>
             </div>
             <div className="bg-white rounded-2xl p-4 border border-gray-100">
-              <p className="text-xs text-gray-500">Doanh thu</p>
+              <p className="text-xs text-gray-500">Doanh thu thực</p>
               <p className="text-xl font-bold text-orange-600 mt-1">{stats.total_revenue.toLocaleString("vi-VN")}đ</p>
             </div>
             <div className="bg-white rounded-2xl p-4 border border-gray-100">
@@ -114,9 +116,13 @@ export default function OrdersPage() {
           </div>
         )}
 
-        {/* Filter */}
+        {/* Filter tabs */}
         <div className="flex gap-2">
-          {[{ key: "active", label: "Đang xử lý" }, { key: "served", label: "Đã phục vụ" }, { key: "all", label: "Tất cả" }].map((f) => (
+          {[
+            { key: "active", label: `Đang xử lý${activeOrders.length ? ` (${activeOrders.length})` : ""}` },
+            { key: "served", label: "Đã bán" },
+            { key: "all",    label: "Tất cả" },
+          ].map((f) => (
             <button
               key={f.key}
               onClick={() => setFilter(f.key)}
@@ -129,52 +135,52 @@ export default function OrdersPage() {
           ))}
         </div>
 
-        {/* Orders */}
-        {loading ? (
-          <div className="flex justify-center py-20">
-            <div className="w-8 h-8 border-2 border-orange-500 border-t-transparent rounded-full animate-spin" />
-          </div>
-        ) : filtered.length === 0 ? (
-          <div className="text-center py-16 text-gray-400">Không có đơn hàng</div>
-        ) : (
-          <div className="space-y-3">
-            {filtered.map((order) => {
-              const cfg = STATUS_CONFIG[order.status] ?? STATUS_CONFIG.pending;
-              return (
-                <div
-                  key={order.id}
-                  className={`bg-white rounded-2xl border overflow-hidden shadow-sm ${
-                    order.status === "pending" ? "border-yellow-300" : "border-gray-100"
-                  }`}
-                >
-                  <div className="p-4">
-                    <div className="flex items-start justify-between gap-2 mb-3">
-                      <div className="flex flex-wrap items-center gap-1.5">
+        {/* ── Sales ledger (Đã bán tab) ── */}
+        {filter === "served" && !loading && (
+          <>
+            {/* Day total */}
+            <div className="bg-orange-500 rounded-2xl p-4 text-white">
+              <p className="text-sm text-orange-100">Tổng doanh thu hôm nay</p>
+              <p className="text-3xl font-bold mt-1">{servedTotal.toLocaleString("vi-VN")}đ</p>
+              <p className="text-xs text-orange-200 mt-1">{servedOrders.length} đơn đã phục vụ</p>
+            </div>
+
+            {servedOrders.length === 0 ? (
+              <div className="text-center py-12 text-gray-400">Chưa có đơn nào hoàn thành hôm nay</div>
+            ) : (
+              <div className="space-y-2">
+                {servedOrders.map((order) => (
+                  <div key={order.id} className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm">
+                    {/* Receipt header */}
+                    <div className="flex items-center justify-between px-4 pt-3 pb-2 border-b border-gray-50">
+                      <div className="flex items-center gap-2">
                         {order.table_number && (
-                          <span className="bg-orange-100 text-orange-700 text-xs font-bold px-2 py-0.5 rounded-full">
+                          <span className="bg-gray-100 text-gray-600 text-xs font-bold px-2 py-0.5 rounded-full">
                             Bàn {order.table_number}
                           </span>
                         )}
-                        <span className="font-semibold text-gray-900 text-sm">{order.customer_name}</span>
-                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${cfg.color}`}>{cfg.label}</span>
+                        <span className="text-sm text-gray-500">{order.customer_name}</span>
                       </div>
-                      <div className="text-right flex-shrink-0">
-                        <p className="text-xs text-gray-400">{new Date(order.created_at).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}</p>
-                        <p className="font-bold text-sm text-gray-900">{order.total_price.toLocaleString("vi-VN")}đ</p>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-gray-400">
+                          {new Date(order.created_at).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}
+                        </span>
+                        <span className="font-bold text-gray-900 text-sm">{order.total_price.toLocaleString("vi-VN")}đ</span>
                       </div>
                     </div>
 
-                    <div className="bg-gray-50 rounded-xl p-3 space-y-1">
+                    {/* Items — compact receipt style */}
+                    <div className="px-4 py-2 space-y-0.5">
                       {order.items.map((item, i) => (
-                        <div key={i} className="flex justify-between text-sm">
-                          <span className="text-gray-700">{item.name} ×{item.quantity}</span>
-                          <span className="text-gray-400">{(item.price * item.quantity).toLocaleString("vi-VN")}đ</span>
+                        <div key={i} className="flex justify-between text-xs text-gray-500">
+                          <span>{item.name} ×{item.quantity}</span>
+                          <span>{(item.price * item.quantity).toLocaleString("vi-VN")}đ</span>
                         </div>
                       ))}
-                      {order.notes && <p className="text-xs text-gray-400 italic mt-1">{order.notes}</p>}
                     </div>
 
-                    <div className="flex gap-2 mt-3">
+                    {/* Print only — no status action */}
+                    <div className="px-4 pb-3 pt-1">
                       <button
                         onClick={() => printOrderReceipt({
                           id: order.id,
@@ -183,25 +189,93 @@ export default function OrdersPage() {
                           notes: order.notes,
                           customerName: order.customer_name,
                         })}
-                        className="w-10 h-10 flex-shrink-0 rounded-xl border border-gray-200 flex items-center justify-center text-gray-500 active:bg-gray-100"
-                        title="In phiếu bếp"
+                        className="w-full py-2 rounded-xl border border-gray-200 text-xs text-gray-500 flex items-center justify-center gap-1.5 active:bg-gray-50"
                       >
-                        🖨
+                        🖨 In biên lai
                       </button>
-                      {cfg.next && (
-                        <button
-                          onClick={() => updateStatus(order.id, cfg.next!)}
-                          className="flex-1 py-3 rounded-xl bg-orange-500 text-white font-semibold text-sm active:bg-orange-600"
-                        >
-                          {NEXT_LABEL[order.status]}
-                        </button>
-                      )}
                     </div>
                   </div>
-                </div>
-              );
-            })}
-          </div>
+                ))}
+              </div>
+            )}
+          </>
+        )}
+
+        {/* ── Active orders + All tab ── */}
+        {filter !== "served" && (
+          loading ? (
+            <div className="flex justify-center py-20">
+              <div className="w-8 h-8 border-2 border-orange-500 border-t-transparent rounded-full animate-spin" />
+            </div>
+          ) : filtered.length === 0 ? (
+            <div className="text-center py-16 text-gray-400">Không có đơn hàng</div>
+          ) : (
+            <div className="space-y-3">
+              {filtered.map((order) => {
+                const cfg = STATUS_CONFIG[order.status] ?? STATUS_CONFIG.pending;
+                return (
+                  <div
+                    key={order.id}
+                    className={`bg-white rounded-2xl border overflow-hidden shadow-sm ${
+                      order.status === "pending" ? "border-yellow-300" : "border-gray-100"
+                    }`}
+                  >
+                    <div className="p-4">
+                      <div className="flex items-start justify-between gap-2 mb-3">
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          {order.table_number && (
+                            <span className="bg-orange-100 text-orange-700 text-xs font-bold px-2 py-0.5 rounded-full">
+                              Bàn {order.table_number}
+                            </span>
+                          )}
+                          <span className="font-semibold text-gray-900 text-sm">{order.customer_name}</span>
+                          <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${cfg.color}`}>{cfg.label}</span>
+                        </div>
+                        <div className="text-right flex-shrink-0">
+                          <p className="text-xs text-gray-400">{new Date(order.created_at).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}</p>
+                          <p className="font-bold text-sm text-gray-900">{order.total_price.toLocaleString("vi-VN")}đ</p>
+                        </div>
+                      </div>
+
+                      <div className="bg-gray-50 rounded-xl p-3 space-y-1">
+                        {order.items.map((item, i) => (
+                          <div key={i} className="flex justify-between text-sm">
+                            <span className="text-gray-700">{item.name} ×{item.quantity}</span>
+                            <span className="text-gray-400">{(item.price * item.quantity).toLocaleString("vi-VN")}đ</span>
+                          </div>
+                        ))}
+                        {order.notes && <p className="text-xs text-gray-400 italic mt-1">{order.notes}</p>}
+                      </div>
+
+                      <div className="flex gap-2 mt-3">
+                        <button
+                          onClick={() => printOrderReceipt({
+                            id: order.id,
+                            tableNumber: order.table_number ?? "—",
+                            items: order.items,
+                            notes: order.notes,
+                            customerName: order.customer_name,
+                          })}
+                          className="w-10 h-10 flex-shrink-0 rounded-xl border border-gray-200 flex items-center justify-center text-gray-500 active:bg-gray-100"
+                          title="In phiếu bếp"
+                        >
+                          🖨
+                        </button>
+                        {cfg.next && (
+                          <button
+                            onClick={() => updateStatus(order.id, cfg.next!)}
+                            className="flex-1 py-3 rounded-xl bg-orange-500 text-white font-semibold text-sm active:bg-orange-600"
+                          >
+                            {NEXT_LABEL[order.status]}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )
         )}
       </div>
     </div>
